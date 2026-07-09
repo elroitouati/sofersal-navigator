@@ -83,6 +83,10 @@
     display:inline-flex; align-items:center; gap:6px; background:#fff2f6; color:var(--brand-dark);
     border-radius:999px; padding:4px 12px; font-size:15px; font-weight:700; margin-top:8px;
   }
+  .type-chip{
+    display:inline-block; background:#eef1f5; color:var(--muted); border-radius:8px;
+    padding:2px 9px; font-size:14px; font-weight:700; margin-inline-start:8px; vertical-align:middle;
+  }
   .accwarn{color:#b26a00; font-size:14px; margin-top:6px; display:flex; gap:6px; align-items:center}
   .hidden{display:none !important}
   footer{color:var(--muted); font-size:13px; text-align:center; padding:24px 16px}
@@ -113,7 +117,7 @@
   </div>
 
   <div class="toolbar">
-    <a class="btn btn-route" id="fullRouteBtn" target="_blank" rel="noopener">🧭 נווט למסלול המלא</a>
+    <a class="btn btn-route" id="fullRouteBtn" target="_blank" rel="noopener">🧭 נווט למסלול המלא (Google Maps)</a>
     <button class="btn btn-loc" id="locBtn">📍 סדר מהמיקום שלי</button>
     <button class="btn btn-loc hidden" id="resetOrderBtn">↺ סדר ברירת מחדל</button>
   </div>
@@ -176,11 +180,13 @@ function nnOrder(branches, start){
   return order.concat(noGeo); // sניפים בלי קואורדינטות בסוף
 }
 
-function mapsSingle(b){
-  if(b.lat!=null) return `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lon}&travelmode=driving`;
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((b.address?b.address+', ':'')+b.city)}&travelmode=driving`;
+function wazeSingle(b){
+  // Waze deep link: navigate to a single point (no multi-stop support exists in Waze's URL scheme)
+  if(b.lat!=null) return `https://www.waze.com/ul?ll=${b.lat}%2C${b.lon}&navigate=yes`;
+  return `https://www.waze.com/ul?q=${encodeURIComponent((b.address?b.address+', ':'')+b.city)}&navigate=yes`;
 }
 function mapsFullRoute(order){
+  // Waze has no public multi-stop link, so the full-route button stays on Google Maps
   const stops = order.filter(b=>b.lat!=null).map(b=>`${b.lat},${b.lon}`);
   if(!stops.length) return '#';
   return 'https://www.google.com/maps/dir/' + stops.join('/');
@@ -207,20 +213,25 @@ $('#search').addEventListener('input', e=>renderCities(e.target.value));
 /* ====== results screen ====== */
 let current=null, currentOrder=null;
 
+function nameEl(b){
+  const n=el('div','name'); n.appendChild(document.createTextNode(b.name));
+  if(b.type){ n.appendChild(el('span','type-chip', b.type)); }
+  return n;
+}
 function branchCard(b, ref){ // ref=true => reference list card (no number/segment)
   const card=el('div','card');
   const nameWrap = el('div', ref?'':'route-card');
   if(!ref){
     nameWrap.appendChild(b._num);
     const body=el('div','body'); nameWrap._body=body;
-    body.appendChild(el('div','name', b.name));
+    body.appendChild(nameEl(b));
     fillDetails(body,b);
     if(b._seg) body.appendChild(b._seg);
     nameWrap.appendChild(body);
     card.appendChild(nameWrap);
     card.appendChild(actions(b));
   } else {
-    card.appendChild(el('div','name', b.name));
+    card.appendChild(nameEl(b));
     fillDetails(card,b);
     card.appendChild(actions(b));
   }
@@ -235,7 +246,7 @@ function fillDetails(parent,b){
 }
 function actions(b){
   const wrap=el('div','actions');
-  const nav=el('a','btn btn-nav'); nav.href=mapsSingle(b); nav.target='_blank'; nav.rel='noopener'; nav.textContent='🧭 נווט';
+  const nav=el('a','btn btn-nav'); nav.href=wazeSingle(b); nav.target='_blank'; nav.rel='noopener'; nav.textContent='🧭 נווט (Waze)';
   wrap.appendChild(nav);
   const tel=telHref(b);
   if(tel){ const c=el('a','btn btn-call'); c.href=tel; c.textContent='📞 חייג'; wrap.appendChild(c); }
