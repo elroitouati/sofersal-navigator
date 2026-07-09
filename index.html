@@ -117,11 +117,10 @@
   </div>
 
   <div class="toolbar">
-    <a class="btn btn-route" id="fullRouteBtn" target="_blank" rel="noopener">🧭 התחל מסלול (Waze) — לתחנה 1</a>
+    <a class="btn btn-route" id="fullRouteBtn" target="_blank" rel="noopener">🧭 נווט למסלול המלא (Google Maps)</a>
     <button class="btn btn-loc" id="locBtn">📍 סדר מהמיקום שלי</button>
     <button class="btn btn-loc hidden" id="resetOrderBtn">↺ סדר ברירת מחדל</button>
   </div>
-  <div class="hint" style="margin-top:-6px">ל-Waze אין תמיכה במסלול מרובה-עצירות — הכפתור פותח ניווט לתחנה הראשונה; להמשך, לחץ "נווט" ליד כל תחנה בתורה.</div>
 
   <div class="cols">
     <section class="panel">
@@ -186,12 +185,11 @@ function wazeSingle(b){
   if(b.lat!=null) return `https://www.waze.com/ul?ll=${b.lat}%2C${b.lon}&navigate=yes`;
   return `https://www.waze.com/ul?q=${encodeURIComponent((b.address?b.address+', ':'')+b.city)}&navigate=yes`;
 }
-function wazeFullRoute(order){
-  // Waze has no multi-stop deep link (confirmed: no waypoints param exists, and Waze staff
-  // have said the app has no way to pre-load multiple stops). Best available behavior:
-  // navigate to the first stop; the driver taps each stop's own Waze button as they go.
-  const first = order.find(b=>b.lat!=null);
-  return first ? wazeSingle(first) : '#';
+function mapsFullRoute(order){
+  // Waze has no multi-stop deep link, so the full-route button stays on Google Maps
+  const stops = order.filter(b=>b.lat!=null).map(b=>`${b.lat},${b.lon}`);
+  if(!stops.length) return '#';
+  return 'https://www.google.com/maps/dir/' + stops.join('/');
 }
 function telHref(b){ const t=(b.mobile||b.phone||'').split(/[ ,\/]/)[0].replace(/[^0-9+]/g,''); return t?('tel:'+t):null; }
 
@@ -271,7 +269,7 @@ function renderRoute(order){
     rl.appendChild(branchCard(b,false));
     prev=b;
   });
-  $('#fullRouteBtn').href = wazeFullRoute(order);
+  $('#fullRouteBtn').href = mapsFullRoute(order);
 }
 function renderRef(branches){
   const refl=$('#refList'); refl.innerHTML='';
