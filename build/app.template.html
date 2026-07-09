@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#d10a4e">
+<title>מסלול שופרסל</title>
+<style>
+  :root{
+    --brand:#d10a4e; --brand-dark:#a80840; --nav:#1a73e8; --call:#188038;
+    --bg:#f4f5f7; --card:#ffffff; --ink:#1a1a1a; --muted:#5f6b7a; --line:#e3e6ea;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans Hebrew",sans-serif;
+    background:var(--bg); color:var(--ink); font-size:18px; line-height:1.5;
+    -webkit-text-size-adjust:100%;
+  }
+  header{
+    position:sticky; top:0; z-index:10; background:var(--brand); color:#fff;
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom,0)); padding-top:calc(14px + env(safe-area-inset-top,0));
+    box-shadow:0 2px 6px rgba(0,0,0,.15);
+  }
+  header .title{font-size:22px; font-weight:800; display:flex; align-items:center; gap:8px}
+  header .sub{font-size:14px; opacity:.9; margin-top:2px}
+  .wrap{max-width:1100px; margin:0 auto; padding:16px}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    border:0; border-radius:14px; font-size:19px; font-weight:700; cursor:pointer;
+    padding:14px 18px; text-decoration:none; min-height:54px; width:100%;
+    transition:transform .05s ease, filter .15s ease;
+  }
+  .btn:active{transform:scale(.98)}
+  .btn-nav{background:var(--nav); color:#fff}
+  .btn-call{background:var(--call); color:#fff}
+  .btn-route{background:var(--brand); color:#fff; font-size:21px; box-shadow:var(--shadow)}
+  .btn-ghost{background:#fff; color:var(--brand); border:2px solid var(--brand)}
+  .btn-loc{background:#fff; color:var(--ink); border:2px solid var(--line)}
+
+  /* ---- city picker ---- */
+  #search{
+    width:100%; font-size:20px; padding:16px 18px; border-radius:14px;
+    border:2px solid var(--line); background:#fff; margin-bottom:12px; outline:none;
+  }
+  #search:focus{border-color:var(--brand)}
+  .city-list{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  @media(max-width:560px){ .city-list{grid-template-columns:1fr} }
+  .city-btn{
+    background:var(--card); border:2px solid var(--line); border-radius:14px;
+    padding:16px; font-size:20px; font-weight:700; text-align:right; cursor:pointer;
+    display:flex; justify-content:space-between; align-items:center; gap:8px; box-shadow:var(--shadow);
+  }
+  .city-btn:active{border-color:var(--brand)}
+  .badge{background:var(--brand); color:#fff; border-radius:999px; padding:3px 11px; font-size:15px; font-weight:800; min-width:34px; text-align:center}
+  .hint{color:var(--muted); font-size:15px; margin:4px 2px 14px}
+
+  /* ---- results ---- */
+  .cityhead{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px}
+  .cityhead h2{font-size:26px; margin:0; font-weight:800}
+  .cityhead .count{color:var(--muted); font-size:16px}
+  .toolbar{display:grid; grid-template-columns:1fr; gap:10px; margin-bottom:18px}
+  @media(min-width:620px){ .toolbar{grid-template-columns:2fr 1fr 1fr} }
+
+  .cols{display:grid; grid-template-columns:1fr; gap:22px}
+  @media(min-width:900px){ .cols{grid-template-columns:1fr 1fr} }
+  .panel h3{font-size:18px; color:var(--muted); text-transform:none; margin:0 2px 10px; font-weight:800; letter-spacing:.2px}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow)}
+  .card .name{font-size:21px; font-weight:800; line-height:1.25}
+  .card .row{display:flex; align-items:flex-start; gap:8px; color:var(--muted); font-size:16px; margin-top:6px}
+  .card .row b{color:var(--ink); font-weight:600}
+  .card .actions{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px}
+  .num{
+    display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+    width:40px; height:40px; border-radius:50%; background:var(--brand); color:#fff;
+    font-weight:800; font-size:20px;
+  }
+  .route-card{display:flex; gap:14px}
+  .route-card .body{flex:1; min-width:0}
+  .seg{
+    display:inline-flex; align-items:center; gap:6px; background:#fff2f6; color:var(--brand-dark);
+    border-radius:999px; padding:4px 12px; font-size:15px; font-weight:700; margin-top:8px;
+  }
+  .accwarn{color:#b26a00; font-size:14px; margin-top:6px; display:flex; gap:6px; align-items:center}
+  .hidden{display:none !important}
+  footer{color:var(--muted); font-size:13px; text-align:center; padding:24px 16px}
+  .ico{width:20px;height:20px;flex:0 0 auto}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding:0">
+    <div class="title">🛒 מסלול שופרסל</div>
+    <div class="sub" id="subhead">בחר עיר לתכנון מסלול הביקורים</div>
+  </div>
+</header>
+
+<!-- ===== SCREEN 1: city picker ===== -->
+<main class="wrap" id="pickScreen">
+  <input id="search" type="search" inputmode="search" placeholder="🔍 חפש עיר…" autocomplete="off">
+  <div class="hint" id="pickHint"></div>
+  <div class="city-list" id="cityList"></div>
+</main>
+
+<!-- ===== SCREEN 2: results ===== -->
+<main class="wrap hidden" id="resultScreen">
+  <div class="cityhead">
+    <button class="btn btn-ghost" style="width:auto;padding:10px 16px;min-height:auto" id="backBtn">‹ עיר אחרת</button>
+    <h2 id="cityName"></h2>
+    <span class="count" id="cityCount"></span>
+  </div>
+
+  <div class="toolbar">
+    <a class="btn btn-route" id="fullRouteBtn" target="_blank" rel="noopener">🧭 נווט למסלול המלא</a>
+    <button class="btn btn-loc" id="locBtn">📍 סדר מהמיקום שלי</button>
+    <button class="btn btn-loc hidden" id="resetOrderBtn">↺ סדר ברירת מחדל</button>
+  </div>
+
+  <div class="cols">
+    <section class="panel">
+      <h3>🗺️ מסלול מסודר — לפי הקרוב הבא</h3>
+      <div id="routeList"></div>
+    </section>
+    <section class="panel">
+      <h3>📋 רשימת כל הסניפים בעיר</h3>
+      <div id="refList"></div>
+    </section>
+  </div>
+</main>
+
+<footer id="footer"></footer>
+
+<script>
+/* ====== DATA (injected at build time) ====== */
+const DB = __DATA__;
+
+/* ====== helpers ====== */
+const $ = s => document.querySelector(s);
+const el = (t,c,txt)=>{const e=document.createElement(t); if(c)e.className=c; if(txt!=null)e.textContent=txt; return e;};
+
+function haversine(a,b){ // km
+  if(a.lat==null||b.lat==null) return null;
+  const R=6371, toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat), dLon=toR(b.lon-a.lon);
+  const s=Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+const AVG_KMH = 32; // אומדן מהירות עירונית ממוצעת
+function estMin(km){ return km==null?null:Math.max(1, Math.round(km/AVG_KMH*60)); }
+function fmtKm(km){ return km==null?'?':(km<10?km.toFixed(1):Math.round(km))+' ק״מ'; }
+
+// nearest-neighbor order over a list of branches (with coords), from an optional start point
+function nnOrder(branches, start){
+  const pts = branches.filter(b=>b.lat!=null);
+  const noGeo = branches.filter(b=>b.lat==null);
+  if(pts.length<=1) return branches.slice();
+  const remaining = pts.slice();
+  const order = [];
+  // pick starting branch: nearest to `start` if given, else the northernmost (max lat)
+  let curIdx=0;
+  if(start){
+    let bd=Infinity; remaining.forEach((b,i)=>{const d=haversine(start,b); if(d<bd){bd=d;curIdx=i;}});
+  } else {
+    let bl=-Infinity; remaining.forEach((b,i)=>{ if(b.lat>bl){bl=b.lat;curIdx=i;} });
+  }
+  let cur = remaining.splice(curIdx,1)[0];
+  order.push(cur);
+  while(remaining.length){
+    let bi=0,bd=Infinity;
+    remaining.forEach((b,i)=>{const d=haversine(cur,b); if(d<bd){bd=d;bi=i;}});
+    cur = remaining.splice(bi,1)[0];
+    order.push(cur);
+  }
+  return order.concat(noGeo); // sניפים בלי קואורדינטות בסוף
+}
+
+function mapsSingle(b){
+  if(b.lat!=null) return `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lon}&travelmode=driving`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((b.address?b.address+', ':'')+b.city)}&travelmode=driving`;
+}
+function mapsFullRoute(order){
+  const stops = order.filter(b=>b.lat!=null).map(b=>`${b.lat},${b.lon}`);
+  if(!stops.length) return '#';
+  return 'https://www.google.com/maps/dir/' + stops.join('/');
+}
+function telHref(b){ const t=(b.mobile||b.phone||'').split(/[ ,\/]/)[0].replace(/[^0-9+]/g,''); return t?('tel:'+t):null; }
+
+/* ====== city picker ====== */
+const cities = DB.cities.slice().sort((a,b)=> b.branches.length - a.branches.length || a.city.localeCompare(b.city,'he'));
+function renderCities(filter){
+  const list = $('#cityList'); list.innerHTML='';
+  const f=(filter||'').trim();
+  const shown = cities.filter(c=> !f || c.city.includes(f));
+  $('#pickHint').textContent = `${DB.cities.length} ערים · ${DB.meta.total_branches} סניפים`;
+  if(!shown.length){ list.appendChild(el('div','hint','לא נמצאה עיר בשם זה.')); return; }
+  shown.forEach(c=>{
+    const b=el('button','city-btn'); b.appendChild(el('span',null,c.city));
+    b.appendChild(el('span','badge', String(c.branches.length)));
+    b.onclick=()=>openCity(c.city);
+    list.appendChild(b);
+  });
+}
+$('#search').addEventListener('input', e=>renderCities(e.target.value));
+
+/* ====== results screen ====== */
+let current=null, currentOrder=null;
+
+function branchCard(b, ref){ // ref=true => reference list card (no number/segment)
+  const card=el('div','card');
+  const nameWrap = el('div', ref?'':'route-card');
+  if(!ref){
+    nameWrap.appendChild(b._num);
+    const body=el('div','body'); nameWrap._body=body;
+    body.appendChild(el('div','name', b.name));
+    fillDetails(body,b);
+    if(b._seg) body.appendChild(b._seg);
+    nameWrap.appendChild(body);
+    card.appendChild(nameWrap);
+    card.appendChild(actions(b));
+  } else {
+    card.appendChild(el('div','name', b.name));
+    fillDetails(card,b);
+    card.appendChild(actions(b));
+  }
+  return card;
+}
+function fillDetails(parent,b){
+  if(b.address){ const r=el('div','row'); r.innerHTML='📍 '; r.appendChild(el('b',null,b.address+ (b.city?(', '+b.city):''))); parent.appendChild(r); }
+  if(b.manager){ const r=el('div','row'); r.innerHTML='👤 '; r.appendChild(el('span',null,b.manager)); parent.appendChild(r); }
+  const ph=b.mobile||b.phone;
+  if(ph){ const r=el('div','row'); r.innerHTML='📞 '; r.appendChild(el('span',null,ph)); parent.appendChild(r); }
+  if(b.acc==='city'){ const w=el('div','accwarn'); w.textContent='⚠️ מיקום משוער (מרכז העיר) — כדאי לאמת בניווט'; parent.appendChild(w); }
+}
+function actions(b){
+  const wrap=el('div','actions');
+  const nav=el('a','btn btn-nav'); nav.href=mapsSingle(b); nav.target='_blank'; nav.rel='noopener'; nav.textContent='🧭 נווט';
+  wrap.appendChild(nav);
+  const tel=telHref(b);
+  if(tel){ const c=el('a','btn btn-call'); c.href=tel; c.textContent='📞 חייג'; wrap.appendChild(c); }
+  else { const s=el('span'); wrap.appendChild(s); }
+  return wrap;
+}
+
+function renderRoute(order){
+  currentOrder=order;
+  const rl=$('#routeList'); rl.innerHTML='';
+  let prev=null;
+  order.forEach((b,i)=>{
+    b._num = el('div','num', String(i+1));
+    if(i>0){
+      const km = haversine(prev,b);
+      const seg = el('div','seg');
+      seg.textContent = km==null ? 'מרחק לא ידוע' : `↑ ${fmtKm(km)} · ~${estMin(km)} דק׳ מהתחנה הקודמת`;
+      b._seg = seg;
+    } else { b._seg=null; }
+    rl.appendChild(branchCard(b,false));
+    prev=b;
+  });
+  $('#fullRouteBtn').href = mapsFullRoute(order);
+}
+function renderRef(branches){
+  const refl=$('#refList'); refl.innerHTML='';
+  branches.slice().sort((a,b)=>a.name.localeCompare(b.name,'he')).forEach(b=> refl.appendChild(branchCard(b,true)));
+}
+
+function openCity(name){
+  const c = DB.cities.find(x=>x.city===name); if(!c) return;
+  current=c;
+  $('#pickScreen').classList.add('hidden');
+  $('#resultScreen').classList.remove('hidden');
+  $('#subhead').textContent = name;
+  $('#cityName').textContent = name;
+  $('#cityCount').textContent = `${c.branches.length} סניפים`;
+  // default order = precomputed order stored in DB (already nearest-neighbor)
+  $('#resetOrderBtn').classList.add('hidden');
+  renderRoute(c.branches.slice());
+  renderRef(c.branches);
+  window.scrollTo(0,0);
+}
+
+$('#backBtn').onclick=()=>{
+  $('#resultScreen').classList.add('hidden');
+  $('#pickScreen').classList.remove('hidden');
+  $('#subhead').textContent='בחר עיר לתכנון מסלול הביקורים';
+  window.scrollTo(0,0);
+};
+
+$('#locBtn').onclick=()=>{
+  if(!current) return;
+  const btn=$('#locBtn'); const old=btn.textContent; btn.textContent='📍 מאתר מיקום…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    btn.textContent=old;
+    const start={lat:pos.coords.latitude, lon:pos.coords.longitude};
+    renderRoute(nnOrder(current.branches, start));
+    $('#resetOrderBtn').classList.remove('hidden');
+    window.scrollTo({top:$('#routeList').offsetTop-70,behavior:'smooth'});
+  }, err=>{
+    btn.textContent=old;
+    alert('לא הצלחתי לקבל מיקום. ודא שאישרת הרשאת מיקום לדפדפן.');
+  }, {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
+};
+
+$('#resetOrderBtn').onclick=()=>{
+  if(!current) return;
+  renderRoute(current.branches.slice());
+  $('#resetOrderBtn').classList.add('hidden');
+  window.scrollTo({top:$('#routeList').offsetTop-70,behavior:'smooth'});
+};
+
+/* ====== init ====== */
+renderCities('');
+$('#footer').textContent = `נתונים: ${DB.meta.source} · ${DB.meta.total_branches} סניפים · עודכן ${DB.meta.built||''}`;
+</script>
+</body>
+</html>
