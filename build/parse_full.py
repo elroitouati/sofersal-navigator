@@ -82,7 +82,7 @@ print(f'duplicate ids: {len(dups)} -> {dups}')
 
 if not errors and not count_errs:
     data = dict(
-        meta=dict(source='רשימה מלאה 434 סניפים', total_branches=total,
+        meta=dict(source='רשימת סניפי שופרסל', total_branches=total,
                   total_cities=len(cities_order)),
         cities=[dict(city=c, branches=by_city[c]) for c in sorted(cities_order)])
     json.dump(data, open('branches.raw.json','w',encoding='utf-8'),

@@ -109,6 +109,12 @@
   <input id="search" type="search" inputmode="search" placeholder="🔍 חפש עיר…" autocomplete="off">
   <div class="hint" id="pickHint"></div>
   <div class="city-list" id="cityList"></div>
+
+  <input id="branchSearch" type="search" inputmode="search" placeholder="🔍 חפש סניף לפי שם / כתובת…" autocomplete="off" style="margin-top:22px">
+  <div id="branchSearchResults"></div>
+
+  <button class="btn btn-ghost" id="toggleDoneBtn" style="margin-top:22px">✅ סניפים שבוצעו (<span id="doneGlobalCount">0</span>)</button>
+  <div id="globalDoneList" class="hidden" style="margin-top:14px"></div>
 </main>
 
 <!-- ===== SCREEN 2: results ===== -->
@@ -202,6 +208,7 @@ function mapsFullRoute(order){
 function telHref(b){ const t=(b.mobile||b.phone||'').split(/[ ,\/]/)[0].replace(/[^0-9+]/g,''); return t?('tel:'+t):null; }
 
 /* ====== city picker ====== */
+const ALL_BRANCHES = DB.cities.flatMap(c=>c.branches);
 const cities = DB.cities.slice().sort((a,b)=> b.branches.length - a.branches.length || a.city.localeCompare(b.city,'he'));
 function renderCities(filter){
   const list = $('#cityList'); list.innerHTML='';
@@ -224,7 +231,43 @@ let doneIds = new Set();
 try{ doneIds = new Set(JSON.parse(localStorage.getItem(DONE_KEY)||'[]')); }catch(e){}
 function isDone(id){ return doneIds.has(id); }
 function saveDone(){ try{ localStorage.setItem(DONE_KEY, JSON.stringify([...doneIds])); }catch(e){} }
-function toggleDone(id){ if(doneIds.has(id)) doneIds.delete(id); else doneIds.add(id); saveDone(); refresh(); }
+function toggleDone(id){
+  if(doneIds.has(id)) doneIds.delete(id); else doneIds.add(id);
+  saveDone();
+  if(current) refresh();
+  runBranchSearch();
+  if(!$('#globalDoneList').classList.contains('hidden')) renderGlobalDone();
+  updateDoneBadge();
+}
+function updateDoneBadge(){ $('#doneGlobalCount').textContent = String(ALL_BRANCHES.filter(b=>isDone(b.id)).length); }
+
+/* ====== branch search (across all cities) ====== */
+let lastBranchQuery='';
+function runBranchSearch(){
+  const res=$('#branchSearchResults'); res.innerHTML='';
+  const q=lastBranchQuery;
+  if(!q) return;
+  const matches = ALL_BRANCHES.filter(b=>
+    b.name.includes(q) || (b.address&&b.address.includes(q)) || (b.city&&b.city.includes(q))
+  ).slice(0,40);
+  if(!matches.length){ res.appendChild(el('div','hint','לא נמצאו סניפים.')); return; }
+  matches.forEach(b=>res.appendChild(branchCard(b,true,{doneView:isDone(b.id)})));
+}
+$('#branchSearch').addEventListener('input', e=>{ lastBranchQuery=(e.target.value||'').trim(); runBranchSearch(); });
+
+/* ====== global "done" list (across all cities) ====== */
+function renderGlobalDone(){
+  const list = ALL_BRANCHES.filter(b=>isDone(b.id));
+  const box=$('#globalDoneList'); box.innerHTML='';
+  if(!list.length){ box.appendChild(el('div','hint','עוד לא סימנת אף סניף כבוצע.')); return; }
+  list.slice().sort((a,b)=> a.city.localeCompare(b.city,'he') || a.name.localeCompare(b.name,'he'))
+      .forEach(b=>box.appendChild(branchCard(b,true,{doneView:true})));
+}
+$('#toggleDoneBtn').onclick=()=>{
+  const box=$('#globalDoneList');
+  box.classList.toggle('hidden');
+  if(!box.classList.contains('hidden')) renderGlobalDone();
+};
 
 /* ====== results screen ====== */
 let current=null, currentOrder=null, orderMode='default', locationStart=null;
@@ -363,6 +406,7 @@ $('#resetOrderBtn').onclick=()=>{
 
 /* ====== init ====== */
 renderCities('');
+updateDoneBadge();
 $('#footer').textContent = `נתונים: ${DB.meta.source} · ${DB.meta.total_branches} סניפים · עודכן ${DB.meta.built||''}`;
 </script>
 </body>
