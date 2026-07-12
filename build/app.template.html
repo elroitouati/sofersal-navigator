@@ -88,6 +88,9 @@
     padding:2px 9px; font-size:14px; font-weight:700; margin-inline-start:8px; vertical-align:middle;
   }
   .accwarn{color:#b26a00; font-size:14px; margin-top:6px; display:flex; gap:6px; align-items:center}
+  .btn-done{background:#fff; color:#b26a00; border:2px solid #f0c37a; margin-top:10px}
+  .btn-undone{background:#fff; color:var(--muted); border:2px solid var(--line); margin-top:10px}
+  .done-card{opacity:.72}
   .hidden{display:none !important}
   footer{color:var(--muted); font-size:13px; text-align:center; padding:24px 16px}
   .ico{width:20px;height:20px;flex:0 0 auto}
@@ -132,6 +135,11 @@
       <div id="refList"></div>
     </section>
   </div>
+
+  <section class="panel hidden" id="doneSection" style="margin-top:22px">
+    <h3>✅ סניפים שבוצעו</h3>
+    <div id="doneList"></div>
+  </section>
 </main>
 
 <footer id="footer"></footer>
@@ -210,16 +218,25 @@ function renderCities(filter){
 }
 $('#search').addEventListener('input', e=>renderCities(e.target.value));
 
+/* ====== "done" tracking (persisted locally on this phone/browser) ====== */
+const DONE_KEY = 'shufersal_done_v1';
+let doneIds = new Set();
+try{ doneIds = new Set(JSON.parse(localStorage.getItem(DONE_KEY)||'[]')); }catch(e){}
+function isDone(id){ return doneIds.has(id); }
+function saveDone(){ try{ localStorage.setItem(DONE_KEY, JSON.stringify([...doneIds])); }catch(e){} }
+function toggleDone(id){ if(doneIds.has(id)) doneIds.delete(id); else doneIds.add(id); saveDone(); refresh(); }
+
 /* ====== results screen ====== */
-let current=null, currentOrder=null;
+let current=null, currentOrder=null, orderMode='default', locationStart=null;
 
 function nameEl(b){
   const n=el('div','name'); n.appendChild(document.createTextNode(b.name));
   if(b.type){ n.appendChild(el('span','type-chip', b.type)); }
   return n;
 }
-function branchCard(b, ref){ // ref=true => reference list card (no number/segment)
-  const card=el('div','card');
+function branchCard(b, ref, opts){ // ref=true => reference/done-list card (no number/segment)
+  opts = opts||{};
+  const card=el('div','card'+(opts.doneView?' done-card':''));
   const nameWrap = el('div', ref?'':'route-card');
   if(!ref){
     nameWrap.appendChild(b._num);
@@ -229,11 +246,11 @@ function branchCard(b, ref){ // ref=true => reference list card (no number/segme
     if(b._seg) body.appendChild(b._seg);
     nameWrap.appendChild(body);
     card.appendChild(nameWrap);
-    card.appendChild(actions(b));
+    card.appendChild(actions(b,opts));
   } else {
     card.appendChild(nameEl(b));
     fillDetails(card,b);
-    card.appendChild(actions(b));
+    card.appendChild(actions(b,opts));
   }
   return card;
 }
@@ -244,19 +261,27 @@ function fillDetails(parent,b){
   if(ph){ const r=el('div','row'); r.innerHTML='📞 '; r.appendChild(el('span',null,ph)); parent.appendChild(r); }
   if(b.acc==='city'){ const w=el('div','accwarn'); w.textContent='⚠️ מיקום משוער (מרכז העיר) — כדאי לאמת בניווט'; parent.appendChild(w); }
 }
-function actions(b){
-  const wrap=el('div','actions');
+function actions(b,opts){
+  opts=opts||{};
+  const wrap=el('div');
+  const row=el('div','actions');
   const nav=el('a','btn btn-nav'); nav.href=wazeSingle(b); nav.target='_blank'; nav.rel='noopener'; nav.textContent='🧭 נווט (Waze)';
-  wrap.appendChild(nav);
+  row.appendChild(nav);
   const tel=telHref(b);
-  if(tel){ const c=el('a','btn btn-call'); c.href=tel; c.textContent='📞 חייג'; wrap.appendChild(c); }
-  else { const s=el('span'); wrap.appendChild(s); }
+  if(tel){ const c=el('a','btn btn-call'); c.href=tel; c.textContent='📞 חייג'; row.appendChild(c); }
+  else { row.appendChild(el('span')); }
+  wrap.appendChild(row);
+  const doneBtn=el('button', 'btn '+(opts.doneView?'btn-undone':'btn-done'));
+  doneBtn.textContent = opts.doneView ? '↩️ בטל סימון בוצע' : '✔️ סמן כבוצע';
+  doneBtn.onclick=()=>toggleDone(b.id);
+  wrap.appendChild(doneBtn);
   return wrap;
 }
 
 function renderRoute(order){
   currentOrder=order;
   const rl=$('#routeList'); rl.innerHTML='';
+  if(!order.length){ rl.appendChild(el('div','hint','כל הסניפים בעיר סומנו כבוצעו 🎉')); }
   let prev=null;
   order.forEach((b,i)=>{
     b._num = el('div','num', String(i+1));
@@ -269,25 +294,39 @@ function renderRoute(order){
     rl.appendChild(branchCard(b,false));
     prev=b;
   });
-  $('#fullRouteBtn').href = mapsFullRoute(order);
+  $('#fullRouteBtn').href = order.length ? mapsFullRoute(order) : '#';
 }
 function renderRef(branches){
   const refl=$('#refList'); refl.innerHTML='';
+  if(!branches.length){ refl.appendChild(el('div','hint','אין סניפים פעילים להצגה.')); return; }
   branches.slice().sort((a,b)=>a.name.localeCompare(b.name,'he')).forEach(b=> refl.appendChild(branchCard(b,true)));
+}
+function renderDone(branches){
+  const dl=$('#doneList'); dl.innerHTML='';
+  branches.slice().sort((a,b)=>a.name.localeCompare(b.name,'he')).forEach(b=> dl.appendChild(branchCard(b,true,{doneView:true})));
+}
+
+function refresh(){
+  if(!current) return;
+  const active = current.branches.filter(b=>!isDone(b.id));
+  const done = current.branches.filter(b=>isDone(b.id));
+  const ordered = (orderMode==='location' && locationStart) ? nnOrder(active, locationStart) : active;
+  renderRoute(ordered);
+  renderRef(active);
+  renderDone(done);
+  $('#cityCount').textContent = `${current.branches.length} סניפים` + (done.length ? ` · ${done.length} בוצעו` : '');
+  $('#doneSection').classList.toggle('hidden', done.length===0);
 }
 
 function openCity(name){
   const c = DB.cities.find(x=>x.city===name); if(!c) return;
-  current=c;
+  current=c; orderMode='default'; locationStart=null;
   $('#pickScreen').classList.add('hidden');
   $('#resultScreen').classList.remove('hidden');
   $('#subhead').textContent = name;
   $('#cityName').textContent = name;
-  $('#cityCount').textContent = `${c.branches.length} סניפים`;
-  // default order = precomputed order stored in DB (already nearest-neighbor)
   $('#resetOrderBtn').classList.add('hidden');
-  renderRoute(c.branches.slice());
-  renderRef(c.branches);
+  refresh();
   window.scrollTo(0,0);
 }
 
@@ -303,8 +342,9 @@ $('#locBtn').onclick=()=>{
   const btn=$('#locBtn'); const old=btn.textContent; btn.textContent='📍 מאתר מיקום…';
   navigator.geolocation.getCurrentPosition(pos=>{
     btn.textContent=old;
-    const start={lat:pos.coords.latitude, lon:pos.coords.longitude};
-    renderRoute(nnOrder(current.branches, start));
+    locationStart={lat:pos.coords.latitude, lon:pos.coords.longitude};
+    orderMode='location';
+    refresh();
     $('#resetOrderBtn').classList.remove('hidden');
     window.scrollTo({top:$('#routeList').offsetTop-70,behavior:'smooth'});
   }, err=>{
@@ -315,7 +355,8 @@ $('#locBtn').onclick=()=>{
 
 $('#resetOrderBtn').onclick=()=>{
   if(!current) return;
-  renderRoute(current.branches.slice());
+  orderMode='default'; locationStart=null;
+  refresh();
   $('#resetOrderBtn').classList.add('hidden');
   window.scrollTo({top:$('#routeList').offsetTop-70,behavior:'smooth'});
 };
