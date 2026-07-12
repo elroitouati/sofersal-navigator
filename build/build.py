@@ -27,21 +27,27 @@ def nn_order(branches):
         order.append(rem.pop(j))
     return order+nogeo
 
-out_cities=[]; stats={}
+EXCLUDED_TYPES = {'אקספרס'}  # excluded from the app entirely (small convenience-store format)
+
+out_cities=[]; stats={}; total=0
 for c in raw['cities']:
     bs=[]
     for b in c['branches']:
+        if b.get('type','') in EXCLUDED_TYPES:
+            continue
         g=cache.get(key(b['address'],b['city']),{})
         acc=g.get('acc','none')
         bs.append(dict(id=b['id'], name=b['name'], city=b['city'], type=b.get('type',''),
                        address=b['address'], manager=b['manager'], phone=b['phone'],
                        lat=g.get('lat'), lon=g.get('lon'), acc=acc))
         stats[acc]=stats.get(acc,0)+1
-    out_cities.append(dict(city=c['city'], branches=nn_order(bs)))
+    if bs:  # drop cities left with no branches after exclusion
+        out_cities.append(dict(city=c['city'], branches=nn_order(bs)))
+        total+=len(bs)
 
 out_cities.sort(key=lambda c: c['city'])
 data=dict(meta=dict(source=raw['meta']['source'],
-                    total_branches=raw['meta']['total_branches'],
+                    total_branches=total,
                     total_cities=len(out_cities),
                     built=datetime.date.today().isoformat()),
           cities=out_cities)
