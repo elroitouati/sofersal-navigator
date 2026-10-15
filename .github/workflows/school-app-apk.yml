@@ -1,0 +1,82 @@
+# בונה את ה-APK של אפליקציית המשימות (school-app/) ומפרסם אותו ב-Releases.
+name: school-app APK
+
+on:
+  push:
+    paths:
+      - 'school-app/**'
+      - '.github/workflows/school-app-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: school-app-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: school-app
+    env:
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: school-app/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck + tests
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Signing certificate fingerprint (for Google Cloud OAuth)
+        run: keytool -list -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey | grep -E "SHA1|SHA256"
+
+      - name: Build release APK
+        working-directory: school-app/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/school-tasks-${{ github.run_number }}.apk"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: school-tasks-apk
+          path: school-app/dist/*.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: school-app-build-${{ github.run_number }}
+          name: המשימות שלי – גרסה ${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            להתקנה: פתח את הדף הזה מהטלפון, הורד את קובץ ה-APK למטה ופתח אותו.
+            (ענף: ${{ github.ref_name }}, קומיט: ${{ github.sha }})
+          files: school-app/dist/*.apk

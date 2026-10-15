@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "המשימות שלי",
+    "slug": "school-tasks",
+    "scheme": "schooltasks",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.elroi.schooltasks",
+      "adaptiveIcon": {
+        "backgroundColor": "#4F46E5",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["POST_NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "SCHEDULE_EXACT_ALARM"],
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-background-task",
+      "expo-sharing",
+      ["expo-localization", { "forcesRTL": true, "supportsRTL": true }],
+      ["expo-notifications", { "color": "#4F46E5" }],
+      ["expo-build-properties", { "android": { "usesCleartextTraffic": false } }]
+    ],
+    "experiments": { "typedRoutes": false }
+  }
+}
