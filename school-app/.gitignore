@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# אייקונים (ה-.gitignore הראשי מתעלם מכל ה-png)
+!assets/*.png
