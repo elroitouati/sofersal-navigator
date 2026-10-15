@@ -94,7 +94,7 @@ export default function AmitLogin() {
   };
 
   const shareHtml = async (html: string, title: string) => {
-    const safe = title.replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 40) || 'page';
+    const safe = title.replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 40) || 'page';
     const file = new File(Paths.cache, `amit_${safe}_${Date.now()}.html`);
     file.write(html);
     await Sharing.shareAsync(file.uri, { mimeType: 'text/html', dialogTitle: 'שלח את הדף' });
